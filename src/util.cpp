@@ -8,7 +8,12 @@
 #include "shader.hpp"
 #include "sprite.hpp"
 
-#include "OpenGL/glu.h"
+#ifdef __linux__
+#include <GL/glu.h>
+#else
+#include <OpenGL/glu.h>
+#endif
+
 #include <iostream>
 std::string loadFile(std::string filename) {
 	// Open the specified file

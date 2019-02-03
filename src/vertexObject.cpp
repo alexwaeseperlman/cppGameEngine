@@ -1,5 +1,11 @@
 #include "vertexObject.hpp"
+
+#ifdef __linux__
+#include <GL/glu.h>
+#else
 #include <OpenGL/glu.h>
+#endif
+
 #include <iostream>
 /*
 VBO *VBO::createVBO(std::vector<float> values) {

@@ -3,7 +3,13 @@
 
 #include <IL/il.h>
 #include <IL/ilu.h>
+
+#ifdef __linux__
+#include <GL/glu.h>
+#else
 #include <OpenGL/glu.h>
+#endif
+
 #include <iostream>
 
 SpriteSheet::SpriteSheet(std::string filename) {

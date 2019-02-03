@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "test.hpp"
 #include "shader.hpp"
 #include <glad/glad.h>
 #include <iostream>

@@ -1,8 +1,0 @@
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/install/local.dir
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/list_install_components.dir
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/rebuild_cache.dir
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/edit_cache.dir
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/install/strip.dir
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/install.dir
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/glad.dir
-/Users/kitchenmac/Desktop/Code/games/glfwRenderer/build/CMakeFiles/SDL2Test.dir

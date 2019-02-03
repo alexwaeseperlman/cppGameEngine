@@ -2,75 +2,96 @@
 #include <chrono>
 #include <thread>
 
-#define currentNanoSeconds                                                                                             \
-	(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+#define currentMicroSeconds                                                                                            \
+	(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
 
+App::App(void (*init)(frameInfo *, appInfo *), void (*update)(frameInfo *, appInfo *),
+         void (*render)(frameInfo *, appInfo *), void (*cleanup)(frameInfo *, appInfo *)) {
+	this->init = init;
+	this->update = update;
+	this->render = render;
+	this->cleanup = cleanup;
+}
 void App::callUpdate() {
-	uint64_t time = currentNanoSeconds;
+	uint64_t time = currentMicroSeconds;
 	uint64_t frameTime = 0;
 
-	while (!this->frame.shouldClose) {
-		this->frame.shouldClose = glfwWindowShouldClose(this->app.window);
+	while (!frame->shouldClose) {
+		frame->shouldClose = glfwWindowShouldClose(app->window);
 		glfwPollEvents();
-		this->frame.time.timePassedUpdate = (double) (currentNanoSeconds - time) / 1000000;
-		this->update();
-		frameTime = (1000000 / this->app.logic.maxUPS) - (currentNanoSeconds - time);
-		time = currentNanoSeconds;
-		if (frameTime > 0) std::this_thread::sleep_for(std::chrono::nanoseconds(1000000 - frameTime));
+
+		frame->time.timePassedUpdate = (double) (currentMicroSeconds - time) / 1000000;
+		this->update(frame, app);
+		frameTime = (1000000 / app->logic.maxUPS) - (currentMicroSeconds - time);
+		time = currentMicroSeconds;
+		if (frameTime > 0) std::this_thread::sleep_for(std::chrono::microseconds(1000000 - frameTime));
 	}
 }
 
 void App::callRender() {
-	uint64_t time = currentNanoSeconds;
+	uint64_t time = currentMicroSeconds;
 	uint64_t frameTime = 0;
 
-	while (!this->frame.shouldClose) {
-		glfwMakeContextCurrent(this->app.window);
-		this->frame.time.timePassedRender = (double) (currentNanoSeconds - time) / 1000000;
-		this->render();
-		frameTime = (1000000 / this->app.render.maxFPS) - (currentNanoSeconds - time);
-		time = currentNanoSeconds;
-		if (frameTime > 0) std::this_thread::sleep_for(std::chrono::nanoseconds(1000000 - frameTime));
+	while (!frame->shouldClose) {
+		glfwMakeContextCurrent(app->window);
+		frame->time.timePassedRender = (double) (currentMicroSeconds - time) / 1000000;
+
+		this->render(frame, app);
+
+		frameTime = (1000000 / app->render.maxFPS) - (currentMicroSeconds - time);
+		time = currentMicroSeconds;
+		if (frameTime > 0) std::this_thread::sleep_for(std::chrono::microseconds(1000000 - frameTime));
 	}
 }
 
 void App::setup(GLFWwindow *win) {
-	this->init();
-	std::thread updater(this->callUpdate);
-	std::thread render(this->callRender);
-	glfwSetCursorPosCallback(this->app.window, this->onMouseMoved);
-	glfwSetMouseButtonCallback(this->app.window, this->onMouseButton);
+	this->init(frame, app);
 
-	glfwSetWindowPosCallback(this->app.window, this->onWindowMoved);
-	glfwSetWindowSizeCallback(this->app.window, this->onWindowResized);
-	glfwSetWindowFocusCallback(this->app.window, this->onWindowFocused);
-	glfwSetFramebufferSizeCallback(this->app.window, this->onFrameBufferResized);
+	this->app->window = win;
+
+	std::thread updater([this]() { this->callUpdate(); });
+	std::thread render([this]() { this->callRender(); });
+
+	updater.join();
+	render.join();
+
+	this->cleanup(frame, app);
+	/*glfwSetCursorPosCallback(app->window, onMouseMoved);
+	glfwSetMouseButtonCallback(app->window, onMouseButton);*/
+
+	/*glfwSetWindowPosCallback(app->window, onWindowMoved);
+	glfwSetWindowSizeCallback(app->window, onWindowResized);
+	glfwSetWindowFocusCallback(app->window, onWindowFocused);
+	glfwSetFramebufferSizeCallback(app->window, onFrameBufferResized);*/
 }
-
+/*
 void App::onWindowMoved(GLFWwindow *window, int x, int y) {
-	this->frame.window.x = x;
-	this->frame.window.y = y;
+  frame->window.x = x;
+  frame->window.y = y;
 }
+
+
 void App::onWindowResized(GLFWwindow *window, int width, int height) {
-	this->frame.window.width = width;
-	this->frame.window.height = height;
+  frame->window.width = width;
+  frame->window.height = height;
 }
 void App::onWindowFocused(GLFWwindow *window, int focused) {
-	this->frame.window.focused = (bool) focused;
+  frame->window.focused = (bool) focused;
 }
 void App::onFrameBufferResized(GLFWwindow *window, int width, int height) {
-	this->frame.width = width;
-	this->frame.height = height;
+  frame->width = width;
+  frame->height = height;
 }
-
+*/
+/*
 void App::onMouseMoved(GLFWwindow *window, double x, double y) {
-	this->frame.mouse.x = x;
-	this->frame.mouse.y = y;
+  frame->mouse.x = x;
+  frame->mouse.y = y;
 }
 void App::onMouseButton(GLFWwindow *window, int button, int action, int mods) {
-	if (button == GLFW_MOUSE_BUTTON_LEFT) {
-		this->frame.mouse.leftButtonDown = action == GLFW_PRESS;
-	} else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-		this->frame.mouse.rightButtonDown = action == GLFW_PRESS;
-	}
-}
+  if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    frame->mouse.leftButtonDown = action == GLFW_PRESS;
+  } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+    frame->mouse.rightButtonDown = action == GLFW_PRESS;
+  }
+}*/

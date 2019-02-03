@@ -80,6 +80,8 @@ bool init() {
 			testRenderer = new SpriteRenderer(testSheet, whiteShader);
 			std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
 			sprite = testRenderer->addSprite(0, 0, 10);
+			testRenderer->addSprite(0.1, 0, 10);
+
 			std::cout << "Created Sprites: " << gluErrorString(glGetError()) << std::endl << std::endl;
 
 			glfwSetCursorPosCallback(window, cursorPos);

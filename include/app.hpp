@@ -2,34 +2,20 @@
 #include <glad/glad.h>
 #include <iostream>
 
+#include <string>
+
 #include "OpenGL/glu.h"
 
 #include <GLFW/glfw3.h>
 
 typedef struct frameInfo {
-	int width = 0;
-	int height = 0;
-	struct window {
-		int width = 0;
-		int height = 0;
-		int x = 0;
-		int y = 0;
-		bool focused = true;
-		GLFWwindow *window;
-	} window;
-	struct mouse {
-		double x = 0;
-		double y = 0;
-		bool leftButtonDown = false;
-		bool rightButtonDown = false;
-	} mouse;
 	struct time {
 		double timePassedUpdate = 0;
 		double timePassedRender = 0;
 		int frameCount = 0;
 	} time;
 	bool shouldClose = false;
-};
+} frameInfo;
 
 typedef struct appInfo {
 	struct render {
@@ -40,31 +26,22 @@ typedef struct appInfo {
 		int maxUPS = 120;
 	} logic;
 	GLFWwindow *window;
-};
+} appInfo;
 
 class App {
 public:
-	static frameInfo frame;
-	static appInfo app;
-	virtual bool init() = 0;
-	virtual void error() = 0;
-	virtual bool update() = 0;
-	virtual bool render() = 0;
-	virtual void cleanup();
-	App();
+	frameInfo *frame;
+	appInfo *app;
+	void (*init)(frameInfo *, appInfo *);
+	void (*update)(frameInfo *, appInfo *);
+	void (*render)(frameInfo *, appInfo *);
+	void (*cleanup)(frameInfo *, appInfo *);
+
+	App(void (*init)(frameInfo *, appInfo *), void (*update)(frameInfo *, appInfo *),
+	    void (*render)(frameInfo *, appInfo *), void (*cleanup)(frameInfo *, appInfo *));
 
 private:
 	void setup(GLFWwindow *win);
 	void callUpdate();
 	void callRender();
-
-	void onWindowMoved(GLFWwindow *window, int x, int y);
-	void onWindowResized(GLFWwindow *window, int width, int height);
-	void onWindowFocused(GLFWwindow *window, int focused);
-	void onFrameBufferResized(GLFWwindow *window, int width, int height);
-
-	void onMouseMoved(GLFWwindow *window, double x, double y);
-	void onMouseButton(GLFWwindow *window, int button, int action, int mods);
-
-	// TODO: Add keyboard events
 };

@@ -2,10 +2,12 @@
 #include "shader.hpp"
 
 #include <IL/il.h>
+#include <IL/ilu.h>
 #include <OpenGL/glu.h>
 #include <iostream>
 
-SpriteSheet::SpriteSheet(std::string filename, float gridWidth, float gridHeight) {
+SpriteSheet::SpriteSheet(std::string filename) {
+	this->texCoords = std::vector<float *>();
 	ILuint imgID = 0;
 	ilGenImages(1, &imgID);
 	ILboolean success = ilLoadImage(filename.c_str());
@@ -28,9 +30,13 @@ SpriteSheet::SpriteSheet(std::string filename, float gridWidth, float gridHeight
 
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		} else {
+			std::cerr << "Unable to load image: " << iluErrorString(ilGetError()) << std::endl;
 		}
 		// Delete file from memory
 		ilDeleteImages(1, &imgID);
+	} else {
+		std::cerr << "Unable to load image: " << iluErrorString(ilGetError()) << std::endl;
 	}
 
 	// Check for error
@@ -38,57 +44,40 @@ SpriteSheet::SpriteSheet(std::string filename, float gridWidth, float gridHeight
 	if (error != GL_NO_ERROR) {
 		printf("Error loading texture from %p pixels! %s\n", ilGetData(), gluErrorString(error));
 	}
-
-	this->gridWidth = gridWidth;
-	this->gridHeight = gridHeight;
-	std::cout << this->gridWidth << std::endl;
 }
 
-Sprite::Sprite(Quad *quad, int spriteSheetID) : Quad::Quad(quad->x, quad->y, quad->w, quad->h) {
-	this->spriteSheetIndex = spriteSheetID;
+SpriteRenderer::SpriteRenderer(SpriteSheet *spriteSheet, int maxSprites) {
+	glGenBuffers(1, &this->spriteCoordVBO);
+	glGenBuffers(1, &this->spriteTextureCoordVBO);
+
+	glGenVertexArrays(1, &this->vao);
+
+	// Initialize both buffers to have maxSprites * spriteVertices to store enough information for every sprite
+	glBindBuffer(GL_ARRAY_BUFFER, this->spriteCoordVBO);
+	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat),
+	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, this->spriteTextureCoordVBO);
+	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat),
+	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
 }
 
-Sprite::Sprite(float x, float y, float w, float h, int spriteSheetID) : Quad::Quad(x, y, w, h) {
-	this->spriteSheetIndex = spriteSheetID;
+Sprite *SpriteRenderer::addSprite(float x, float y, int textureID) {
 }
 
-Shader *SpriteRenderer::spriteShader = NULL;
-
-GLint SpriteRenderer::spriteNumberUniform = NULL;
-GLint SpriteRenderer::gridSizeUniform = NULL;
-GLint SpriteRenderer::spriteSheetUniform = NULL;
-
-SpriteRenderer::SpriteRenderer(SpriteSheet *sheet, Shader *shader) {
-	this->spriteSheet = sheet;
-	this->sprites;
+void SpriteRenderer::removeSprite(Sprite *) {
 }
 
-Sprite *SpriteRenderer::addSprite(Sprite *sprite) {
-	this->sprites.insert(this->sprites.end(), sprite);
-	return sprite;
+Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
+	this->renderer = renderer;
+	this->rendererIndex = rendererIndex;
 }
 
-Sprite *SpriteRenderer::addSprite(Quad *quad, int spriteID) {
-	Sprite *sprite = new Sprite(quad, spriteID);
-	return this->addSprite(sprite);
+void Sprite::setTextureID(int textureID) {
 }
 
-Sprite *SpriteRenderer::addSprite(float x, float y, int spriteID) {
-	Sprite *sprite = new Sprite(x, y, this->spriteSheet->getGridWidth(), this->spriteSheet->getGridHeight(), spriteID);
-	return this->addSprite(sprite);
+void Sprite::setPosition(float x, float y) {
 }
 
-Sprite *SpriteRenderer::addSprite(float x, float y, float w, float h, int spriteID) {
-	Sprite *sprite = new Sprite(x, y, w, h, spriteID);
-	return this->addSprite(sprite);
-}
-
-void SpriteRenderer::display() {
-	SpriteRenderer::spriteShader->bind();
-	glUniform2f(gridSizeUniform, this->spriteSheet->getGridWidth(), this->spriteSheet->getGridHeight());
-	glUniform1i(spriteSheetUniform, this->spriteSheet->getTexture());
-	// Iterate sprites and draw them all
-	for (Sprite *sprite : this->sprites) {
-		glUniform1i(spriteNumberUniform, sprite->spriteSheetIndex);
-	}
+void Sprite::setSize(float w, float h) {
 }

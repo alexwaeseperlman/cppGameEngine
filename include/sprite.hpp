@@ -4,55 +4,65 @@
 
 #include <string>
 #include <vector>
+
 class SpriteSheet {
 public:
-	SpriteSheet(std::string filename, float gridWidth, float gridHeight);
+	SpriteSheet(std::string filename);
 
-	float getGridWidth() { return gridWidth; }
-	float getGridHeight() { return gridHeight; }
+	void createGrid(float gridWidth, float gridHeight, float imgWidth, float imgHeight);
+
+	// Returns an array of 4 floats 0=x,1=y,2=x2,3=y2
+	std::vector<float *> texCoords;
 
 	GLuint getTexture() { return texture; }
 
 private:
-	float gridWidth = 1;
-	float gridHeight = 1;
 	GLuint texture;
 };
 
-class Sprite : public Quad {
-public:
-	Sprite(Quad *quad, int spriteSheetID);
-	Sprite(float x, float y, float w, float h, int spriteSheetID);
-
-	int spriteSheetIndex;
-};
+class Sprite;
 
 class SpriteRenderer {
 public:
-	static Shader *spriteShader;
 	SpriteSheet *spriteSheet;
+	SpriteRenderer(SpriteSheet *spriteSheet, int maxSprites = 10000);
 
-	static GLint spriteNumberUniform;
-	static GLint gridSizeUniform;
-	static GLint spriteSheetUniform;
-
-	SpriteRenderer(SpriteSheet *sheet, Shader *shader);
-	SpriteRenderer(SpriteSheet *sheet);
-	SpriteRenderer(Shader *shader);
-
-	Sprite *addSprite(Sprite *sprite);
-	Sprite *addSprite(float x, float y, int spriteID);
-	Sprite *addSprite(Quad *sprite, int spriteID);
-	Sprite *addSprite(float x, float y, float w, float h, int spriteID);
-	// TODO: Add remove sprite
-
-	void display();
+	Sprite *addSprite(float x, float y, int textureID);
+	void removeSprite(Sprite *);
 
 private:
-	std::vector<Sprite *> sprites = {};
-	/*
-	uniform int spriteNumber;
-	uniform vec2 gridSize;
-	uniform sampler2D spriteSheet;
-	*/
+	int maxSprites = 10000;
+	int spriteCount = 0;
+	std::vector<Sprite *> emptySprites = {};
+
+	GLuint vao;
+
+	GLuint spriteCoordVBO;
+	GLuint spriteTextureCoordVBO;
+	GLuint elementVBO;
+};
+
+class Sprite {
+public:
+	static const int spriteVertices = 4;
+	static const int spriteElements = 6;
+	SpriteRenderer *renderer;
+	Sprite(SpriteRenderer *renderer, int rendererIndex);
+	void setTextureID(int textureID);
+	int getTextureID() { return textureID; };
+
+	void setPosition(float x, float y);
+	void setSize(float w, float h);
+	float getX() { return coords[0]; }
+	float getY() { return coords[1]; }
+	float getW() { return coords[2]; }
+	float getH() { return coords[3]; }
+
+private:
+	int textureID;
+
+	float coords[4] = {0, 0, 1, 1};
+	float texCoords[4] = {0, 0, 4, 4};
+
+	int rendererIndex;
 };

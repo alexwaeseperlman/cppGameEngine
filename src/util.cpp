@@ -7,6 +7,9 @@
 
 #include "shader.hpp"
 #include "sprite.hpp"
+
+#include "OpenGL/glu.h"
+#include <iostream>
 std::string loadFile(std::string filename) {
 	// Open the specified file
 	std::ifstream in(filename);
@@ -17,11 +20,13 @@ std::string loadFile(std::string filename) {
 }
 
 bool initLibraries() {
-	SpriteRenderer::spriteShader = Shader::loadShader("assets/SpriteSheet");
+	/*SpriteRenderer::spriteShader = Shader::loadShader("assets/SpriteSheet");
 	SpriteRenderer::spriteNumberUniform =
 	    glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "spriteNumber");
 	SpriteRenderer::gridSizeUniform = glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "gridSize");
 	SpriteRenderer::spriteSheetUniform = glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "spriteSheet");
+	std::cout << "Uniform locations: " << gluErrorString(glGetError()) << std::endl << std::endl;*/
+
 	// Initialize DevIL
 	ilInit();
 	ilClearColour(255, 255, 255, 000);

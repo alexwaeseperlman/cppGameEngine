@@ -23,7 +23,7 @@ static GLFWwindow *window = NULL;
 
 Shader *whiteShader;
 SpriteSheet *testSheet;
-SpriteRenderer *testRenderer;
+// SpriteRenderer *testRenderer;
 
 Quad *sprite;
 
@@ -76,13 +76,13 @@ bool init() {
 			whiteShader->printLog();
 
 			glfwSwapBuffers(window);
-			testSheet = new SpriteSheet("file", 0.25, 0.25);
-			std::cout << "Created Sheet: " << gluErrorString(glGetError()) << std::endl;
-			testRenderer = new SpriteRenderer(testSheet, whiteShader);
-			std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
-			sprite = testRenderer->addSprite(0, 0, 10);
-			testRenderer->addSprite(0.1, 0, 10);
-
+			// testSheet = new SpriteSheet("file", 0.25, 0.25);
+			// std::cout << "Created Sheet: " << gluErrorString(glGetError()) << std::endl;
+			// testRenderer = new SpriteRenderer(testSheet, whiteShader);
+			// std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
+			// sprite = testRenderer->addSprite(0, 0, 10);
+			// testRenderer->addSprite(0.1, 0, 10);
+			sprite = new Quad(0, 0, 0.5, 0.5);
 			std::cout << "Created Sprites: " << gluErrorString(glGetError()) << std::endl << std::endl;
 
 			glfwSetCursorPosCallback(window, cursorPos);
@@ -106,7 +106,7 @@ bool mainLoop() { /* Render here */
 	glClearColor(0.0f, 0.5f, 1.0f, 1.0f);
 	std::cout << "Clear: " << gluErrorString(glGetError()) << std::endl;
 
-	testRenderer->display();
+	// testRenderer->display();
 	std::cout << "Draw Sprites: " << gluErrorString(glGetError()) << std::endl;
 
 	/* Swap front and back buffers */

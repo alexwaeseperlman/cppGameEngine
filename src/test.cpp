@@ -61,6 +61,7 @@ bool init() {
 			glfwMakeContextCurrent(window);
 			gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
 			glfwSwapInterval(1);
+			initLibraries();
 			std::cout << "Swap interval: " << gluErrorString(glGetError()) << std::endl;
 
 			int w, h;

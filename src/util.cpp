@@ -4,6 +4,9 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+
+#include "shader.hpp"
+#include "sprite.hpp"
 std::string loadFile(std::string filename) {
 	// Open the specified file
 	std::ifstream in(filename);
@@ -14,6 +17,11 @@ std::string loadFile(std::string filename) {
 }
 
 bool initLibraries() {
+	SpriteRenderer::spriteShader = Shader::loadShader("assets/SpriteSheet");
+	SpriteRenderer::spriteNumberUniform =
+	    glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "spriteNumber");
+	SpriteRenderer::gridSizeUniform = glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "gridSize");
+	SpriteRenderer::spriteSheetUniform = glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "spriteSheet");
 	// Initialize DevIL
 	ilInit();
 	ilClearColour(255, 255, 255, 000);

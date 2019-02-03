@@ -52,17 +52,13 @@ Sprite::Sprite(float x, float y, float w, float h, int spriteSheetID) : Quad::Qu
 	this->spriteSheetIndex = spriteSheetID;
 }
 
-Shader *SpriteRenderer::spriteShader = Shader::loadShader("assets/SpriteSheet");
+Shader *SpriteRenderer::spriteShader = NULL;
 
-GLint SpriteRenderer::spriteNumberUniform = 0;
-GLint SpriteRenderer::gridSizeUniform = 0;
-GLint SpriteRenderer::spriteSheetUniform = 0;
+GLint SpriteRenderer::spriteNumberUniform = NULL;
+GLint SpriteRenderer::gridSizeUniform = NULL;
+GLint SpriteRenderer::spriteSheetUniform = NULL;
 
 SpriteRenderer::SpriteRenderer(SpriteSheet *sheet, Shader *shader) {
-
-	SpriteRenderer::spriteNumberUniform = glGetUniformLocation(spriteShader->getProgram(), "spriteNumber");
-	SpriteRenderer::gridSizeUniform = glGetUniformLocation(spriteShader->getProgram(), "gridSize");
-	SpriteRenderer::spriteSheetUniform = glGetUniformLocation(spriteShader->getProgram(), "spriteSheet");
 	this->spriteSheet = sheet;
 	this->sprites;
 }

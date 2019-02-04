@@ -1,5 +1,11 @@
 #include "vertexObject.hpp"
+
+#ifdef __linux__
+#include <GL/glu.h>
+#else
 #include <OpenGL/glu.h>
+#endif
+
 #include <iostream>
 /*
 VBO *VBO::createVBO(std::vector<float> values) {
@@ -64,7 +70,8 @@ Quad::Quad(float x, float y, float w, float h) {
 		elementArrayGenerated = true;
 		glGenBuffers(1, &Quad::elementArrayBuffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Quad::elementArrayBuffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * sizeof(int), (int[]){0, 1, 2, 3}, GL_STATIC_READ);
+		static const int array[4] = {0, 1, 2, 3};
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * sizeof(int), array, GL_STATIC_READ);
 	}
 
 	glGenBuffers(1, &this->id);

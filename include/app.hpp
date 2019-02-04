@@ -4,7 +4,11 @@
 
 #include <string>
 
-#include "OpenGL/glu.h"
+#ifdef __linux__
+#include <GL/glu.h>
+#else
+#include <OpenGL/glu.h>
+#endif
 
 #include <GLFW/glfw3.h>
 

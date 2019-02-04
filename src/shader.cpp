@@ -1,5 +1,11 @@
 #include "shader.hpp"
-#include "OpenGL/glu.h"
+
+#ifdef __linux__
+#include <GL/glu.h>
+#else
+#include <OpenGL/glu.h>
+#endif
+
 #include <iostream>
 
 Shader::Shader() {

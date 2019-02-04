@@ -3,7 +3,11 @@
 #include <glad/glad.h>
 #include <iostream>
 
-#include "OpenGL/glu.h"
+#ifdef __linux__
+#include <GL/glu.h>
+#else
+#include <OpenGL/glu.h>
+#endif
 
 #include <GLFW/glfw3.h>
 
@@ -45,7 +49,7 @@ bool init() {
 		atexit(glfwTerminate);
 		glfwSetErrorCallback(onError);
 
-		// Request an OpenGL 4.1 context (should be core)
+		// Request an OpenGL 3.3 context (should be core)
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);

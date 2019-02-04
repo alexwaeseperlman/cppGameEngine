@@ -7,7 +7,18 @@
 #include <iostream>
 
 SpriteSheet::SpriteSheet(std::string filename) {
-	this->texCoords = std::vector<float *>();
+	// This is for testing:
+	// Create a default coordinate for sprites to use while testing
+	float *defaultCoords = new float[4];
+	defaultCoords[0] = 0;
+	defaultCoords[1] = 0;
+	defaultCoords[2] = 1;
+	defaultCoords[3] = 1;
+	this->texCoords.push_back(defaultCoords);
+
+	// This was here to debug a segfault but it looks badass so I'm keeping it
+	printf("Sprite Sheet: %p\n\tTex Coords: %p\n", (void *) this, (void *) (&this->texCoords));
+
 	ILuint imgID = 0;
 	ilGenImages(1, &imgID);
 	ILboolean success = ilLoadImage(filename.c_str());
@@ -31,7 +42,7 @@ SpriteSheet::SpriteSheet(std::string filename) {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		} else {
-			std::cerr << "Unable to load image: " << iluErrorString(ilGetError()) << std::endl;
+			std::cerr << "Unable to convert image to pixels: " << iluErrorString(ilGetError()) << std::endl;
 		}
 		// Delete file from memory
 		ilDeleteImages(1, &imgID);
@@ -42,42 +53,150 @@ SpriteSheet::SpriteSheet(std::string filename) {
 	// Check for error
 	GLenum error = glGetError();
 	if (error != GL_NO_ERROR) {
-		printf("Error loading texture from %p pixels! %s\n", ilGetData(), gluErrorString(error));
+		std::cerr << "Error loading texture from %p pixels! " << ilGetData() << gluErrorString(error);
 	}
 }
 
+Shader *SpriteRenderer::spriteShader = NULL;
+GLint SpriteRenderer::spriteSheetUniform = NULL;
+
 SpriteRenderer::SpriteRenderer(SpriteSheet *spriteSheet, int maxSprites) {
+	this->spriteSheet = spriteSheet;
+	this->maxSprites = maxSprites;
+
+	// Generate all of the buffers for the sprite renderer
 	glGenBuffers(1, &this->spriteCoordVBO);
 	glGenBuffers(1, &this->spriteTextureCoordVBO);
+	glGenBuffers(1, &this->elementVBO);
 
 	glGenVertexArrays(1, &this->vao);
+	glBindVertexArray(this->vao);
 
 	// Initialize both buffers to have maxSprites * spriteVertices to store enough information for every sprite
 	glBindBuffer(GL_ARRAY_BUFFER, this->spriteCoordVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat),
+	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat) * Sprite::spriteVertexSize,
 	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void *) 0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, this->spriteTextureCoordVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat),
+	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat) * Sprite::spriteVertexSize,
+	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void *) 0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->elementVBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->maxSprites * Sprite::spriteElements * sizeof(GLuint),
 	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
 }
 
 Sprite *SpriteRenderer::addSprite(float x, float y, int textureID) {
+	printf("Renderer: %p\n\tSprite Sheet: %p\n\t\tTex Coords: %p\n", (void *) this, (void *) this->spriteSheet,
+	       (void *) &this->spriteSheet->texCoords);
+	Sprite *sprite = new Sprite(this, this->spriteCount++);
+
+	sprite->setPosition(x, y);
+
+	return sprite;
+}
+
+void SpriteRenderer::display() {
+	SpriteRenderer::spriteShader->bind();
+	glBindVertexArray(this->vao);
+	std::cout << "Bind vao: " << gluErrorString(glGetError()) << std::endl;
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->elementVBO);
+	std::cout << "Bind buffer: " << gluErrorString(glGetError()) << std::endl;
+	glDrawElements(GL_TRIANGLES, this->spriteCount * Sprite::spriteElements, GL_UNSIGNED_INT, 0);
 }
 
 void SpriteRenderer::removeSprite(Sprite *) {
+	// TODO:
 }
 
+const int Sprite::spriteElementArray[6] = {0, 1, 2, 2, 1, 3};
+
 Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
+	std::cout << "Creating sprite" << std::endl;
+
 	this->renderer = renderer;
 	this->rendererIndex = rendererIndex;
+	this->setTextureID(0);
+	std::cout << "Set texture" << std::endl;
+
+	// Set the indexes in the default element buffer to point to this sprites indexes
+	GLint *elements = new GLint[Sprite::spriteElements];
+	for (int i = 0; i < Sprite::spriteElements; i++) {
+		elements[i] = Sprite::spriteElementArray[i] + this->getRendererIndex() * Sprite::spriteVertices;
+	}
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->renderer->elementVBO);
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, this->getRendererIndex() * Sprite::spriteElements * sizeof(GLuint),
+	                Sprite::spriteElements * sizeof(GLuint), elements);
+	delete[] elements;
+
+	this->setPosition(0, 0);
+	this->setSize(1, 1);
 }
 
 void Sprite::setTextureID(int textureID) {
+	printf("Renderer: %p\n\tSprite Sheet: %p\n\t\tTex Coords: %p\n", (void *) this->renderer,
+	       (void *) this->renderer->spriteSheet, (void *) &this->renderer->spriteSheet->texCoords);
+
+	std::cout << this->renderer->spriteSheet->texCoords[0] << std::endl;
+	float *texCoords = (this->renderer->spriteSheet->texCoords[textureID]);
+
+	// Update tex coords to use the right format
+	this->texCoords[0] = texCoords[0];
+	this->texCoords[1] = texCoords[1];
+	//
+	this->texCoords[2] = texCoords[0];
+	this->texCoords[3] = texCoords[3];
+	//
+	this->texCoords[4] = texCoords[2];
+	this->texCoords[5] = texCoords[1];
+	//
+	this->texCoords[6] = texCoords[2];
+	this->texCoords[7] = texCoords[3];
+
+	std::cout << "Set tex coords" << std::endl;
+
+	// Texture coordinates
+	glBindBuffer(GL_ARRAY_BUFFER, this->renderer->spriteTextureCoordVBO);
+	glBufferSubData(GL_ARRAY_BUFFER,
+	                this->rendererIndex * Sprite::spriteVertexSize * Sprite::spriteVertices * sizeof(GLfloat),
+	                Sprite::spriteVertices * Sprite::spriteVertexSize * sizeof(GLfloat), this->texCoords);
 }
 
 void Sprite::setPosition(float x, float y) {
+	this->x = x;
+	this->y = y;
+
+	this->updateCoords();
 }
 
 void Sprite::setSize(float w, float h) {
+	this->w = w;
+	this->h = h;
+
+	this->updateCoords();
+}
+
+void Sprite::updateCoords() {
+
+	this->coords[0] = this->x;
+	this->coords[1] = this->y;
+	//
+	this->coords[2] = this->x;
+	this->coords[3] = this->y + this->h;
+	//
+	this->coords[4] = this->x + this->w;
+	this->coords[5] = this->y;
+	//
+	this->coords[6] = this->x + this->w;
+	this->coords[7] = this->y + this->h;
+
+	// Coordinates
+	glBindBuffer(GL_ARRAY_BUFFER, this->renderer->spriteCoordVBO);
+	glBufferSubData(GL_ARRAY_BUFFER,
+	                this->rendererIndex * Sprite::spriteVertices * Sprite::spriteVertexSize * sizeof(GLfloat),
+	                Sprite::spriteVertices * Sprite::spriteVertexSize * sizeof(GLfloat), this->coords);
 }

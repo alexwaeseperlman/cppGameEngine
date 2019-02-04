@@ -23,9 +23,9 @@ static GLFWwindow *window = NULL;
 
 Shader *whiteShader;
 SpriteSheet *testSheet;
-// SpriteRenderer *testRenderer;
+SpriteRenderer *testRenderer;
 
-Quad *sprite;
+Sprite *sprite;
 
 void onError(int error, const char *description) {
 	fprintf(stderr, "Error: %s\n", description);
@@ -46,8 +46,8 @@ bool init() {
 		glfwSetErrorCallback(onError);
 
 		// Request an OpenGL 4.1 context (should be core)
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
@@ -76,14 +76,21 @@ bool init() {
 			whiteShader->printLog();
 
 			glfwSwapBuffers(window);
-			// testSheet = new SpriteSheet("file", 0.25, 0.25);
-			// std::cout << "Created Sheet: " << gluErrorString(glGetError()) << std::endl;
-			// testRenderer = new SpriteRenderer(testSheet, whiteShader);
-			// std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
-			// sprite = testRenderer->addSprite(0, 0, 10);
-			// testRenderer->addSprite(0.1, 0, 10);
-			sprite = new Quad(0, 0, 0.5, 0.5);
-			std::cout << "Created Sprites: " << gluErrorString(glGetError()) << std::endl << std::endl;
+			testSheet = new SpriteSheet("file");
+			std::cout << "Created Sheet: " << gluErrorString(glGetError()) << std::endl;
+			testRenderer = new SpriteRenderer(testSheet, 10000);
+			std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
+
+			Sprite *test = testRenderer->addSprite(-0.25, 0, 0);
+			sprite = testRenderer->addSprite(0, 0, 0);
+			test->setSize(1, 1);
+			test->setPosition(0, 0);
+			std::cout << "Created Sprite: " << gluErrorString(glGetError()) << std::endl;
+
+			sprite->setPosition(0, 0);
+			sprite->setSize(1, 1);
+
+			std::cout << "Set Sprite Information: " << gluErrorString(glGetError()) << std::endl << std::endl;
 
 			glfwSetCursorPosCallback(window, cursorPos);
 		}
@@ -100,13 +107,13 @@ bool mainLoop() { /* Render here */
 	glViewport(0, 0, width, height);
 	std::cout << "Update frame buffer size: " << gluErrorString(glGetError()) << std::endl;
 
-	sprite->setPosition(mouseX / width * 2, -mouseY / height * 2);
+	sprite->setPosition(mouseX / width * 2 - 1, -mouseY / height * 2);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glClearColor(0.0f, 0.5f, 1.0f, 1.0f);
 	std::cout << "Clear: " << gluErrorString(glGetError()) << std::endl;
 
-	// testRenderer->display();
+	testRenderer->display();
 	std::cout << "Draw Sprites: " << gluErrorString(glGetError()) << std::endl;
 
 	/* Swap front and back buffers */

@@ -20,15 +20,13 @@ std::string loadFile(std::string filename) {
 }
 
 bool initLibraries() {
-	/*SpriteRenderer::spriteShader = Shader::loadShader("assets/SpriteSheet");
-	SpriteRenderer::spriteNumberUniform =
-	    glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "spriteNumber");
-	SpriteRenderer::gridSizeUniform = glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "gridSize");
+	SpriteRenderer::spriteShader = Shader::loadShader("assets/SpriteSheet");
 	SpriteRenderer::spriteSheetUniform = glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "spriteSheet");
-	std::cout << "Uniform locations: " << gluErrorString(glGetError()) << std::endl << std::endl;*/
+	std::cout << "Uniform locations: " << gluErrorString(glGetError()) << std::endl << std::endl;
 
 	// Initialize DevIL
 	ilInit();
+	iluInit();
 	ilClearColour(255, 255, 255, 000);
 
 	// Check for error

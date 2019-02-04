@@ -1,8 +1,7 @@
-#version 410 core
+#version 330 core
 
 layout(location = 0) in vec2 position;
-uniform int spriteNumber;
-uniform vec2 gridSize;
+layout(location = 1) in vec2 texCoord;
 uniform sampler2D spriteSheet;
 
 void main()

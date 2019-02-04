@@ -8,6 +8,14 @@
 
 #include <GLFW/glfw3.h>
 
+// __LINUX__, __WINDOWS__
+#define __MAC_OSX__
+
+#include "shader.hpp"
+#include "sprite.hpp"
+#include "util.hpp"
+#include "vertexObject.hpp"
+
 typedef struct frameInfo {
 	struct time {
 		double timePassedUpdate = 0;

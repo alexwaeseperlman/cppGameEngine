@@ -68,6 +68,10 @@ bool init() {
 			initLibraries();
 			std::cout << "Swap interval: " << gluErrorString(glGetError()) << std::endl;
 
+			// Enable blending
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 			int w, h;
 			glfwGetWindowSize(window, &w, &h);
 			glViewport(0, 0, w, h);
@@ -80,15 +84,16 @@ bool init() {
 			whiteShader->printLog();
 
 			glfwSwapBuffers(window);
-			testSheet = new SpriteSheet("file");
+			testSheet = new SpriteSheet("assets/animation.spritesheet.png");
+			testSheet->loadFromJSON("assets/animation.spritesheet.json");
 			std::cout << "Created Sheet: " << gluErrorString(glGetError()) << std::endl;
 			testRenderer = new SpriteRenderer(testSheet, 10000);
 			std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
 
 			Sprite *test = testRenderer->addSprite(-0.25, 0, 0);
-			sprite = testRenderer->addSprite(0, 0, 0);
+			sprite = testRenderer->addSprite(0, 0, 1);
 			test->setSize(1, 1);
-			test->setPosition(0, 0);
+			test->setPosition(-0.2, 0);
 			std::cout << "Created Sprite: " << gluErrorString(glGetError()) << std::endl;
 
 			sprite->setPosition(0, 0);
@@ -107,6 +112,8 @@ bool loadAssets() {
 }
 
 bool mainLoop() { /* Render here */
+	// std::cout << "\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A";
+
 	glfwGetFramebufferSize(window, &width, &height);
 	glViewport(0, 0, width, height);
 	std::cout << "Update frame buffer size: " << gluErrorString(glGetError()) << std::endl;
@@ -117,6 +124,8 @@ bool mainLoop() { /* Render here */
 	glClearColor(0.0f, 0.5f, 1.0f, 1.0f);
 	std::cout << "Clear: " << gluErrorString(glGetError()) << std::endl;
 
+	sprite->setTextureID((sprite->getTextureID() + 1) % 10);
+
 	testRenderer->display();
 	std::cout << "Draw Sprites: " << gluErrorString(glGetError()) << std::endl;
 
@@ -126,7 +135,7 @@ bool mainLoop() { /* Render here */
 	/* Poll for and process events */
 	glfwPollEvents();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
 	return true;
 }

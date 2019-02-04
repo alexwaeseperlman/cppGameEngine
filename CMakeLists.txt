@@ -26,8 +26,9 @@ find_package(glfw3)
 find_package(OpenGL REQUIRED)
 find_package(DevIL REQUIRED)
 
+include_directories(${LIB_DIR}/jsoncpp/include)
 include_directories(${OPENGL_INCLUDE_DIRS} ${GLFW3_INCLUDE_DIRS})
-include_directories(libraries/eigen)
+include_directories(${LIB_DIR}/eigen)
 include_directories(include)
 include_directories(${DEVIL_INCLUDE_DIRS})
 
@@ -43,6 +44,14 @@ add_library("glad" "${GLAD_DIR}/src/glad.c")
 target_include_directories("glad" PRIVATE "${GLAD_DIR}/include")
 target_include_directories(Renderer PRIVATE "${GLAD_DIR}/include")
 target_link_libraries(Renderer "glad" "${CMAKE_DL_LIBS}")
+
+set(JSONCPP_DIR "${LIB_DIR}/jsoncpp")
+execute_process(COMMAND python ${JSONCPP_DIR}/amalgamate.py WORKING_DIRECTORY ${JSONCPP_DIR})
+add_library("jsoncpp" "${JSONCPP_DIR}/dist/jsoncpp.cpp")
+target_include_directories("jsoncpp" PRIVATE "${JSONCPP_DIR}/dist")
+target_include_directories(Renderer PRIVATE "${JSONCPP_DIR}/dist")
+target_link_libraries(Renderer "jsoncpp" "${CMAKE_DL_LIBS}")
+
 target_link_libraries(Renderer ${OPENGL_LIBRARIES})
 
 install(TARGETS Renderer RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/bin)

@@ -12,15 +12,9 @@
 
 #include <iostream>
 
+#include <fstream>
+
 SpriteSheet::SpriteSheet(std::string filename) {
-	// This is for testing:
-	// Create a default coordinate for sprites to use while testing
-	float *defaultCoords = new float[4];
-	defaultCoords[0] = 0;
-	defaultCoords[1] = 0;
-	defaultCoords[2] = 1;
-	defaultCoords[3] = 1;
-	this->texCoords.push_back(defaultCoords);
 
 	// This was here to debug a segfault but it looks badass so I'm keeping it
 	printf("Sprite Sheet: %p\n\tTex Coords: %p\n", (void *) this, (void *) (&this->texCoords));
@@ -38,6 +32,9 @@ SpriteSheet::SpriteSheet(std::string filename) {
 			// Create texture from file pixels
 			glGenTextures(1, &this->texture);
 			glBindTexture(GL_TEXTURE_2D, this->texture);
+
+			this->width = ilGetInteger(IL_IMAGE_WIDTH);
+			this->height = ilGetInteger(IL_IMAGE_HEIGHT);
 
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLuint) ilGetInteger(IL_IMAGE_WIDTH),
 			             (GLuint) ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLuint *) ilGetData());
@@ -63,6 +60,35 @@ SpriteSheet::SpriteSheet(std::string filename) {
 	}
 }
 
+void SpriteSheet::loadFromJSON(std::string filename) {
+	Json::Value root;
+
+	std::string file = loadFile(filename);
+	std::cout << file << std::endl;
+
+	Json::Reader reader;
+	bool parsingSuccessful = reader.parse(file.c_str(), root);
+
+	if (!parsingSuccessful) {
+		std::cout << "Failed to parse" << reader.getFormattedErrorMessages();
+		return;
+	}
+
+	int index = 0;
+
+	for (Json::ValueIterator itr = root["frames"].begin(); itr != root["frames"].end(); itr++) {
+		float *coords = new float[4];
+		coords[0] = (*itr)["frame"]["x"].asFloat() / this->width;
+		coords[1] = (*itr)["frame"]["y"].asFloat() / this->height;
+		coords[2] = (*itr)["frame"]["w"].asFloat() / this->width;
+		coords[2] += coords[0];
+		coords[3] = (*itr)["frame"]["h"].asFloat() / this->height;
+		coords[3] += coords[1];
+		std::cout << coords[0] << ", " << coords[1] << std::endl;
+		this->texCoords.push_back(coords);
+	}
+}
+
 Shader *SpriteRenderer::spriteShader = NULL;
 GLint SpriteRenderer::spriteSheetUniform = NULL;
 
@@ -77,6 +103,8 @@ SpriteRenderer::SpriteRenderer(SpriteSheet *spriteSheet, int maxSprites) {
 
 	glGenVertexArrays(1, &this->vao);
 	glBindVertexArray(this->vao);
+
+	// TODO: Sprites should be able to be rotated at 90 degree angles
 
 	// Initialize both buffers to have maxSprites * spriteVertices to store enough information for every sprite
 	glBindBuffer(GL_ARRAY_BUFFER, this->spriteCoordVBO);
@@ -107,6 +135,7 @@ Sprite *SpriteRenderer::addSprite(float x, float y, int textureID) {
 }
 
 void SpriteRenderer::display() {
+	glBindTexture(GL_TEXTURE_2D, this->spriteSheet->getTexture());
 	SpriteRenderer::spriteShader->bind();
 	glBindVertexArray(this->vao);
 	std::cout << "Bind vao: " << gluErrorString(glGetError()) << std::endl;
@@ -126,7 +155,7 @@ Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
 
 	this->renderer = renderer;
 	this->rendererIndex = rendererIndex;
-	this->setTextureID(0);
+	this->setTextureID(rendererIndex);
 	std::cout << "Set texture" << std::endl;
 
 	// Set the indexes in the default element buffer to point to this sprites indexes
@@ -144,10 +173,9 @@ Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
 }
 
 void Sprite::setTextureID(int textureID) {
-	printf("Renderer: %p\n\tSprite Sheet: %p\n\t\tTex Coords: %p\n", (void *) this->renderer,
-	       (void *) this->renderer->spriteSheet, (void *) &this->renderer->spriteSheet->texCoords);
+	this->textureID = textureID;
+	std::cout << "Set tex ID to " << textureID << std::endl;
 
-	std::cout << this->renderer->spriteSheet->texCoords[0] << std::endl;
 	float *texCoords = (this->renderer->spriteSheet->texCoords[textureID]);
 
 	// Update tex coords to use the right format

@@ -3,6 +3,7 @@
 #include "vertexObject.hpp"
 
 #include <array>
+#include <json/json.h>
 #include <string>
 #include <vector>
 
@@ -15,9 +16,18 @@ public:
 	// Returns an array of 4 floats 0=x1,1=y1,2=x2,3=y2
 	std::vector<float *> texCoords;
 
+	void loadFromJSON(std::string filename);
+
 	GLuint getTexture() { return texture; }
 
+	Json::Value sprites;
+
+	int getWidth() { return width; }
+	int getHeight() { return height; }
+
 private:
+	int width;
+	int height;
 	GLuint texture;
 };
 

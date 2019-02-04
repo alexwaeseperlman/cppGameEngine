@@ -2,7 +2,10 @@
 
 layout(location = 0) out vec4 outColor;
 
+in vec2 TexCoord;
+uniform sampler2D spriteSheet;
+
 void main()
 {
-    outColor = vec4(1.0, 1.0, 1.0, 1.0);
+    outColor = texture(spriteSheet, TexCoord);
 }

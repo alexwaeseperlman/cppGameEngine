@@ -46,6 +46,7 @@ void Shader::compile(GLuint shader, std::string source) {
 		char buffer[512];
 		glGetShaderInfoLog(shader, 512, NULL, buffer);
 		std::cout << "Shader compile failed: " << buffer << std::endl;
+		exit(1);
 	}
 }
 Shader *Shader::loadShader(std::string filename) {

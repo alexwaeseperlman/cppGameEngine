@@ -60,7 +60,10 @@ SpriteSheet::SpriteSheet(std::string filename) {
 	}
 }
 
+static float *zeroCoords = new float[4]();
 void SpriteSheet::loadFromJSON(std::string filename) {
+	this->texCoords.push_back(zeroCoords);
+
 	Json::Value root;
 
 	std::string file = loadFile(filename);
@@ -78,12 +81,13 @@ void SpriteSheet::loadFromJSON(std::string filename) {
 
 	for (Json::ValueIterator itr = root["frames"].begin(); itr != root["frames"].end(); itr++) {
 		float *coords = new float[4];
-		coords[0] = (*itr)["frame"]["x"].asFloat() / this->width;
-		coords[1] = (*itr)["frame"]["y"].asFloat() / this->height;
-		coords[2] = (*itr)["frame"]["w"].asFloat() / this->width;
-		coords[2] += coords[0];
-		coords[3] = (*itr)["frame"]["h"].asFloat() / this->height;
-		coords[3] += coords[1];
+
+		// Coords need to be upside down because of opengl image coordinate space
+		coords[2] = (*itr)["frame"]["x"].asFloat() / this->width;
+		coords[3] = (*itr)["frame"]["y"].asFloat() / this->height;
+		coords[0] = (*itr)["frame"]["w"].asFloat() / this->width + coords[2];
+		coords[1] = (*itr)["frame"]["h"].asFloat() / this->height + coords[3];
+
 		std::cout << coords[0] << ", " << coords[1] << std::endl;
 		this->texCoords.push_back(coords);
 	}
@@ -91,6 +95,7 @@ void SpriteSheet::loadFromJSON(std::string filename) {
 
 Shader *SpriteRenderer::spriteShader = NULL;
 GLint SpriteRenderer::spriteSheetUniform = NULL;
+GLint SpriteRenderer::viewProjectionUniform = NULL;
 
 SpriteRenderer::SpriteRenderer(SpriteSheet *spriteSheet, int maxSprites) {
 	this->spriteSheet = spriteSheet;
@@ -104,32 +109,55 @@ SpriteRenderer::SpriteRenderer(SpriteSheet *spriteSheet, int maxSprites) {
 	glGenVertexArrays(1, &this->vao);
 	glBindVertexArray(this->vao);
 
-	// TODO: Sprites should be able to be rotated at 90 degree angles
-
 	// Initialize both buffers to have maxSprites * spriteVertices to store enough information for every sprite
 	glBindBuffer(GL_ARRAY_BUFFER, this->spriteCoordVBO);
 	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat) * Sprite::spriteVertexSize,
-	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
+	             NULL, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void *) 0);
+	glVertexAttribPointer(0, Sprite::spriteVertexSize, GL_FLOAT, GL_FALSE, 0, (void *) 0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, this->spriteTextureCoordVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat) * Sprite::spriteVertexSize,
-	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, this->maxSprites * Sprite::spriteVertices * sizeof(GLfloat) * 2, NULL, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void *) 0);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->elementVBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->maxSprites * Sprite::spriteElements * sizeof(GLuint),
-	             NULL /* This might cause some problems */, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->maxSprites * Sprite::spriteElements * sizeof(GLuint), NULL,
+	             GL_STATIC_DRAW);
+}
+
+Sprite *SpriteRenderer::addSprite(float x, float y, float z, int textureID) {
+
+	printf("Renderer: %p\n\tSprite Sheet: %p\n\t\tTex Coords: %p\n", (void *) this, (void *) this->spriteSheet,
+	       (void *) &this->spriteSheet->texCoords);
+	Sprite *sprite;
+	if (this->emptySprites.size() > 0) {
+		sprite = this->emptySprites[0];
+		this->emptySprites.pop_back();
+	} else {
+		sprite = new Sprite(this, this->spriteCount++);
+	}
+
+	sprite->setPosition(x, y, z);
+	sprite->setTextureID(textureID);
+
+	return sprite;
 }
 
 Sprite *SpriteRenderer::addSprite(float x, float y, int textureID) {
+
 	printf("Renderer: %p\n\tSprite Sheet: %p\n\t\tTex Coords: %p\n", (void *) this, (void *) this->spriteSheet,
 	       (void *) &this->spriteSheet->texCoords);
-	Sprite *sprite = new Sprite(this, this->spriteCount++);
+	Sprite *sprite;
+	if (this->emptySprites.size() > 0) {
+		sprite = this->emptySprites[0];
+		this->emptySprites.pop_back();
+	} else {
+		sprite = new Sprite(this, this->spriteCount++);
+	}
 
-	sprite->setPosition(x, y);
+	sprite->setPosition(x, y, 0);
+	sprite->setTextureID(textureID);
 
 	return sprite;
 }
@@ -144,11 +172,15 @@ void SpriteRenderer::display() {
 	glDrawElements(GL_TRIANGLES, this->spriteCount * Sprite::spriteElements, GL_UNSIGNED_INT, 0);
 }
 
-void SpriteRenderer::removeSprite(Sprite *) {
-	// TODO:
+void SpriteRenderer::removeSprite(Sprite *sprite) {
+	// Set the positions of each vertex to zero
+	sprite->setSize(0, 0);
+	sprite->setPosition(0, 0, 0);
+
+	this->emptySprites.push_back(sprite);
 }
 
-const int Sprite::spriteElementArray[6] = {0, 1, 2, 2, 1, 3};
+const int Sprite::spriteElementArray[6] = {1, 0, 2, 3, 2, 0};
 
 Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
 	std::cout << "Creating sprite" << std::endl;
@@ -161,14 +193,14 @@ Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
 	// Set the indexes in the default element buffer to point to this sprites indexes
 	GLint *elements = new GLint[Sprite::spriteElements];
 	for (int i = 0; i < Sprite::spriteElements; i++) {
-		elements[i] = Sprite::spriteElementArray[i] + this->getRendererIndex() * Sprite::spriteVertices;
+		elements[i] = Sprite::spriteElementArray[i] + this->rendererIndex * Sprite::spriteVertices;
 	}
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->renderer->elementVBO);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, this->getRendererIndex() * Sprite::spriteElements * sizeof(GLuint),
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, this->rendererIndex * Sprite::spriteElements * sizeof(GLuint),
 	                Sprite::spriteElements * sizeof(GLuint), elements);
 	delete[] elements;
 
-	this->setPosition(0, 0);
+	this->setPosition(0, 0, -1);
 	this->setSize(1, 1);
 }
 
@@ -182,51 +214,144 @@ void Sprite::setTextureID(int textureID) {
 	this->texCoords[0] = texCoords[0];
 	this->texCoords[1] = texCoords[1];
 	//
-	this->texCoords[2] = texCoords[0];
-	this->texCoords[3] = texCoords[3];
+	this->texCoords[2] = texCoords[2];
+	this->texCoords[3] = texCoords[1];
 	//
 	this->texCoords[4] = texCoords[2];
-	this->texCoords[5] = texCoords[1];
+	this->texCoords[5] = texCoords[3];
 	//
-	this->texCoords[6] = texCoords[2];
+	this->texCoords[6] = texCoords[0];
 	this->texCoords[7] = texCoords[3];
+
+	if (this->mirrored) {
+		std::swap(this->texCoords[0], this->texCoords[2]);
+		std::swap(this->texCoords[6], this->texCoords[4]);
+	}
 
 	std::cout << "Set tex coords" << std::endl;
 
 	// Texture coordinates
 	glBindBuffer(GL_ARRAY_BUFFER, this->renderer->spriteTextureCoordVBO);
-	glBufferSubData(GL_ARRAY_BUFFER,
-	                this->rendererIndex * Sprite::spriteVertexSize * Sprite::spriteVertices * sizeof(GLfloat),
-	                Sprite::spriteVertices * Sprite::spriteVertexSize * sizeof(GLfloat), this->texCoords);
+	glBufferSubData(GL_ARRAY_BUFFER, this->rendererIndex * 2 * Sprite::spriteVertices * sizeof(GLfloat),
+	                Sprite::spriteVertices * 2 * sizeof(GLfloat), this->texCoords);
+}
+
+void Sprite::setPosition(float x, float y, float z) {
+	this->pos.x = x;
+	this->pos.y = y;
+	this->pos.z = z;
+
+	this->updateCoords();
+
+	this->updateBuffers();
 }
 
 void Sprite::setPosition(float x, float y) {
-	this->x = x;
-	this->y = y;
-
-	this->updateCoords();
+	this->setPosition(x, y, this->pos.z);
 }
 
 void Sprite::setSize(float w, float h) {
-	this->w = w;
-	this->h = h;
+	this->size.x = w;
+	this->size.y = h;
 
 	this->updateCoords();
+
+	this->updateBuffers();
+}
+
+void Sprite::setRotation(int nesw) {
+	this->nesw = nesw;
+	this->rotMode = NESWi;
+	this->updateCoords();
+	this->updateBuffers();
+}
+
+void Sprite::setRotation(float degrees) {
+	this->zrot = degrees;
+	this->rotMode = ZRotf;
+	this->updateCoords();
+	this->updateBuffers();
+}
+
+void Sprite::setRotation(float x, float y, float z) {
+	this->setRotation(glm::quat(glm::vec3(x, y, z)));
+}
+
+void Sprite::setRotation(glm::vec3 degrees) {
+	this->setRotation(glm::quat(degrees));
+}
+
+void Sprite::setRotation(glm::quat degrees) {
+	this->rotation = degrees;
+	this->rotMode = Quatf;
+	this->updateCoords();
+	this->updateBuffers();
+}
+
+void Sprite::setRotationMode(rotationMode rotMode) {
+	this->rotMode = rotMode;
+	this->updateCoords();
+	this->updateBuffers();
+}
+
+void Sprite::mirror() {
+	this->setMirror(!this->mirrored);
+}
+
+void Sprite::setMirror(bool mirrored) {
+	this->mirrored = mirrored;
+	this->setTextureID(this->textureID);
+}
+
+bool Sprite::isMirrored() {
+	return this->mirrored;
+}
+
+void Sprite::setDrawMode(drawMode mode) {
+	this->drawCoordinateMode = mode;
+	this->updateCoords();
+	this->updateBuffers();
 }
 
 void Sprite::updateCoords() {
+	glm::vec3 pos = this->pos;
+	if (this->drawCoordinateMode == CENTER) {
+		pos.x -= this->size.x / 2;
+		pos.y -= this->size.y / 2;
+	}
 
-	this->coords[0] = this->x;
-	this->coords[1] = this->y;
+	if (this->rotMode == NESWi) {
+		glm::vec2 adjustedSize = this->size;
+
+		// Swap width and height if it's rotated 90 or 270 degrees to prevent stretching
+		if (this->nesw % 2 == 1) {
+			float x = adjustedSize.x;
+			adjustedSize.x = adjustedSize.y;
+			adjustedSize.y = x;
+		}
+		this->absolutePos[this->nesw % 4] = pos;
+		this->absolutePos[(this->nesw + 1) % 4] = glm::vec3(pos.x + adjustedSize.x, pos.y, pos.z);
+		this->absolutePos[(this->nesw + 2) % 4] = glm::vec3(pos.x + adjustedSize.x, pos.y + adjustedSize.y, pos.z);
+		this->absolutePos[(this->nesw + 3) % 4] = glm::vec3(pos.x, pos.y + adjustedSize.y, pos.z);
+	}
+}
+
+void Sprite::updateBuffers() {
+	this->coords[0] = this->absolutePos[0].x;
+	this->coords[1] = this->absolutePos[0].y;
+	this->coords[2] = this->absolutePos[0].z;
 	//
-	this->coords[2] = this->x;
-	this->coords[3] = this->y + this->h;
+	this->coords[3] = this->absolutePos[1].x;
+	this->coords[4] = this->absolutePos[1].y;
+	this->coords[5] = this->absolutePos[1].z;
 	//
-	this->coords[4] = this->x + this->w;
-	this->coords[5] = this->y;
+	this->coords[6] = this->absolutePos[2].x;
+	this->coords[7] = this->absolutePos[2].y;
+	this->coords[8] = this->absolutePos[2].z;
 	//
-	this->coords[6] = this->x + this->w;
-	this->coords[7] = this->y + this->h;
+	this->coords[9] = this->absolutePos[3].x;
+	this->coords[10] = this->absolutePos[3].y;
+	this->coords[11] = this->absolutePos[3].z;
 
 	// Coordinates
 	glBindBuffer(GL_ARRAY_BUFFER, this->renderer->spriteCoordVBO);

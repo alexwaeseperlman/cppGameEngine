@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+#include <glm/ext.hpp>
+#include <glm/glm.hpp>
+
 class SpriteSheet {
 public:
 	SpriteSheet(std::string filename);
@@ -37,9 +40,11 @@ class SpriteRenderer {
 public:
 	static Shader *spriteShader;
 	static GLint spriteSheetUniform;
+	static GLint viewProjectionUniform;
 	SpriteSheet *spriteSheet;
 	SpriteRenderer(SpriteSheet *spriteSheet, int maxSprites = 10000);
 
+	Sprite *addSprite(float x, float y, float z, int textureID);
 	Sprite *addSprite(float x, float y, int textureID);
 	void removeSprite(Sprite *);
 
@@ -60,36 +65,79 @@ private:
 class Sprite {
 public:
 	static const int spriteVertices = 4;
-	static const int spriteVertexSize = 2;
+	static const int spriteVertexSize = 3;
 	static const int spriteElements = 6;
 	static const int spriteElementArray[6];
+
+	/**
+	 * NESWi -> An integer representing North, East, South, West from 0-3
+	 *
+	 * ZRotf -> A float representing the degrees of rotation around the Z axis.
+	 *
+	 * Quatf -> Euler angles (uses a quaternion internally). Coordinates
+	 *
+	 * None -> The sprite is displayed from the bottom left coordinate without any rotation.
+	 **/
+	enum rotationMode { NESWi, ZRotf, Quatf, None };
+	enum drawMode { CENTER, CORNER };
+
 	SpriteRenderer *renderer;
 	Sprite(SpriteRenderer *renderer, int rendererIndex);
 	void setTextureID(int textureID);
 	int getTextureID() { return textureID; };
 
+	void setPosition(float x, float y, float z);
 	void setPosition(float x, float y);
 	void setSize(float w, float h);
-	float *getCoordinates() { return coords; }
+	glm::vec3 *getCoordinates() { return absolutePos; }
 	float *getTextureCoordinates() { return texCoords; }
-	float getX1() { return coords[0]; }
-	float getY1() { return coords[1]; }
-	float getX2() { return coords[6]; }
-	float getY2() { return coords[7]; }
+
+	int getNESW() { return this->nesw; }
+	float getZRot() { return this->zrot; }
+	glm::vec3 getEulerAngles() { return glm::eulerAngles(this->rotation); }
+	glm::quat getRotation() { return this->rotation; }
+
+	void setRotation(int nesw);
+	void setRotation(float degrees);
+	void setRotation(glm::vec3 degrees);
+	void setRotation(float x, float y, float z);
+	void setRotation(glm::quat degrees);
 
 	void updateCoords();
+	void updateBuffers();
 
 	int getRendererIndex() { return rendererIndex; }
 
-private:
+	void setRotationMode(rotationMode mode);
+
+	void mirror();
+	void setMirror(bool mirrored);
+	bool isMirrored();
+
+	drawMode getDrawMode() { return this->drawCoordinateMode; }
+	void setDrawMode(drawMode mode);
+
+protected:
 	int textureID;
 
-	float x;
-	float y;
-	float w;
-	float h;
+	bool mirrored = false;
 
-	float coords[8] = {0, 0, 0, 1, 1, 0, 1, 1};
+	rotationMode rotMode = NESWi;
+	drawMode drawCoordinateMode = CORNER;
+
+	// This is only used for rotation mode neswi
+	int nesw = 0;
+	// This is only used for ZRotfCenter
+	float zrot = 0;
+	// This is only used for rotation mode Quatf
+	glm::quat rotation;
+
+	glm::vec3 pos = glm::vec3(0.0f, 0.0f, -1.0f);
+	glm::vec2 size = glm::vec2(0.0f, 0.0f);
+	glm::vec3 absolutePos[4] = {glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+	                            glm::vec3(0.0f, 0.0f, 0.0f)};
+
+	float coords[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	float texCoords[8] = {0, 0, 0, 1, 1, 0, 1, 1};
 
 	int rendererIndex;

@@ -5,57 +5,47 @@
 #define currentMicroSeconds                                                                                            \
 	(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
 
-App::App(void (*init)(frameInfo *, appInfo *), void (*update)(frameInfo *, appInfo *),
-         void (*render)(frameInfo *, appInfo *), void (*cleanup)(frameInfo *, appInfo *)) {
-	this->init = init;
-	this->update = update;
-	this->render = render;
-	this->cleanup = cleanup;
-}
-void App::callUpdate() {
+// TODO: The window class needs to be done before this can be added
+
+void App::setup() {
+	this->frame = new frameInfo();
+	this->app = new appInfo();
+
+	this->init();
+
+	std::thread updater([this]() {
+		uint64_t time = currentMicroSeconds;
+		uint64_t frameTime = 0;
+
+		while (!frame->shouldClose) {
+			frame->time.timePassedUpdate = (double) (currentMicroSeconds - time) / 1000000;
+			std::cout << currentMicroSeconds << std::endl;
+			this->update();
+			frameTime = (1000000 / app->logic.maxUPS) - (currentMicroSeconds - time);
+			time = currentMicroSeconds;
+			if (frameTime > 0) std::this_thread::sleep_for(std::chrono::microseconds(frameTime));
+		}
+	});
 	uint64_t time = currentMicroSeconds;
 	uint64_t frameTime = 0;
 
-	while (!frame->shouldClose) {
-		frame->shouldClose = glfwWindowShouldClose(app->window);
-		glfwPollEvents();
-
-		frame->time.timePassedUpdate = (double) (currentMicroSeconds - time) / 1000000;
-		this->update(frame, app);
-		frameTime = (1000000 / app->logic.maxUPS) - (currentMicroSeconds - time);
-		time = currentMicroSeconds;
-		if (frameTime > 0) std::this_thread::sleep_for(std::chrono::microseconds(1000000 - frameTime));
-	}
-}
-
-void App::callRender() {
-	uint64_t time = currentMicroSeconds;
-	uint64_t frameTime = 0;
-
-	while (!frame->shouldClose) {
-		glfwMakeContextCurrent(app->window);
+	while (updater.joinable()) {
+		if (app->window) {
+			frame->shouldClose = glfwWindowShouldClose(app->window);
+			glfwMakeContextCurrent(app->window);
+		}
 		frame->time.timePassedRender = (double) (currentMicroSeconds - time) / 1000000;
 
-		this->render(frame, app);
+		this->render();
 
 		frameTime = (1000000 / app->render.maxFPS) - (currentMicroSeconds - time);
-		time = currentMicroSeconds;
-		if (frameTime > 0) std::this_thread::sleep_for(std::chrono::microseconds(1000000 - frameTime));
+		if (frameTime > 0) std::this_thread::sleep_for(std::chrono::microseconds(frameTime));
 	}
-}
-
-void App::setup(GLFWwindow *win) {
-	this->init(frame, app);
-
-	this->app->window = win;
-
-	std::thread updater([this]() { this->callUpdate(); });
-	std::thread render([this]() { this->callRender(); });
 
 	updater.join();
-	render.join();
+	// render.join();
 
-	this->cleanup(frame, app);
+	this->cleanup();
 	/*glfwSetCursorPosCallback(app->window, onMouseMoved);
 	glfwSetMouseButtonCallback(app->window, onMouseButton);*/
 

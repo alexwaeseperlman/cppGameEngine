@@ -27,6 +27,8 @@ std::string loadFile(std::string filename) {
 bool initLibraries() {
 	SpriteRenderer::spriteShader = Shader::loadShader("assets/SpriteSheet");
 	SpriteRenderer::spriteSheetUniform = glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "spriteSheet");
+	SpriteRenderer::viewProjectionUniform =
+	    glGetUniformLocation(SpriteRenderer::spriteShader->getProgram(), "viewProjection");
 	std::cout << "Uniform locations: " << gluErrorString(glGetError()) << std::endl << std::endl;
 
 	// Initialize DevIL

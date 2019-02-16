@@ -82,8 +82,12 @@ public:
 	enum drawMode { CENTER, CORNER };
 
 	SpriteRenderer *renderer;
+	Sprite(SpriteRenderer *renderer);
 	Sprite(SpriteRenderer *renderer, int rendererIndex);
+
+	void setTexturePos(glm::vec2 pos1, glm::vec2 pos2);
 	void setTextureID(int textureID);
+	void updateTextureBuffer();
 	int getTextureID() { return textureID; };
 
 	void setPosition(float x, float y, float z);

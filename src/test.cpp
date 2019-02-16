@@ -3,6 +3,8 @@
 #include <glad/glad.h>
 #include <iostream>
 
+#define FRAMEWORK_PLATFORM_GLFW
+
 #ifdef __linux__
 #include <GL/glu.h>
 #else
@@ -14,6 +16,7 @@
 #include "camera.hpp"
 #include "sprite.hpp"
 #include "vertexObject.hpp"
+#include "window.hpp"
 
 #include <chrono>
 #include <thread>
@@ -26,15 +29,10 @@
 
 #include <Ultralight/Ultralight.h>
 
-#include <Framework/platform/common/FontLoaderRoboto.cpp>
-
-using namespace ultralight;
-
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
 
-// The window we'll be rendering to
-static GLFWwindow *window = NULL;
+Window *window;
 
 Shader *whiteShader;
 SpriteSheet *testSheet;
@@ -43,6 +41,16 @@ SpriteRenderer *testRenderer;
 Sprite *sprite;
 
 Camera2D *camera;
+
+using namespace ultralight;
+static bool finished = false;
+
+class LoadListenerImpl : public LoadListener {
+public:
+	virtual ~LoadListenerImpl() {}
+
+	virtual void OnFinishLoading(ultralight::View *caller) { finished = true; }
+};
 
 void onError(int error, const char *description) {
 	fprintf(stderr, "Error: %s\n", description);
@@ -55,72 +63,88 @@ static void cursorPos(GLFWwindow *window, double xpos, double ypos) {
 }
 
 bool init() {
-	// Initialize GLFW
-	if (!glfwInit()) {
-		return false;
-	} else {
-		atexit(glfwTerminate);
-		glfwSetErrorCallback(onError);
+	Window::init();
 
-		// Request an OpenGL 3.3 context (should be core)
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	window = new Window(width, height, "WOW");
+	window->update();
+	initLibraries();
 
-		window = glfwCreateWindow(width, height, "Title", NULL, NULL);
-		glfwGetFramebufferSize(window, &width, &height);
+	camera = new Camera2D();
+	camera->dimensions.x = window->getWidth();
+	camera->dimensions.y = window->getHeight();
+	camera->update();
 
-		if (!window) {
-			glfwTerminate();
-			return false;
-		} else {
-			glfwMakeContextCurrent(window);
-			gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
-			glfwSwapInterval(1);
-			initLibraries();
-			std::cout << "Swap interval: " << gluErrorString(glGetError()) << std::endl;
+	whiteShader = Shader::loadShader("assets/white");
+	std::cout << "Shader: " << gluErrorString(glGetError()) << std::endl;
 
-			// Enable blending
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	whiteShader->printCompileLog();
+	whiteShader->printLog();
 
-			int w, h;
-			glfwGetWindowSize(window, &w, &h);
-			camera = new Camera2D();
-			camera->dimensions.x = w;
-			camera->dimensions.y = h;
-			camera->update();
-			glViewport(0, 0, w, h);
-			std::cout << "Viewport: " << gluErrorString(glGetError()) << std::endl;
+	testSheet = new SpriteSheet("assets/animation.spritesheet.png");
+	testSheet->loadFromJSON("assets/animation.spritesheet.json");
+	std::cout << "Created Sheet: " << gluErrorString(glGetError()) << std::endl;
+	testRenderer = new SpriteRenderer(testSheet, 10000);
+	std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
 
-			whiteShader = Shader::loadShader("assets/white");
-			std::cout << "Shader: " << gluErrorString(glGetError()) << std::endl;
+	Sprite *test = testRenderer->addSprite(-0.25, 0, 0);
+	sprite = testRenderer->addSprite(0, 0, 1);
+	test->setSize(71, 95);
+	test->setPosition(-0.2, 0);
+	test->setTextureID(1);
 
-			whiteShader->printCompileLog();
-			whiteShader->printLog();
+	sprite->setDrawMode(Sprite::drawMode::CENTER);
 
-			glfwSwapBuffers(window);
-			testSheet = new SpriteSheet("assets/animation.spritesheet.png");
-			testSheet->loadFromJSON("assets/animation.spritesheet.json");
-			std::cout << "Created Sheet: " << gluErrorString(glGetError()) << std::endl;
-			testRenderer = new SpriteRenderer(testSheet, 10000);
-			std::cout << "Created Renderer: " << gluErrorString(glGetError()) << std::endl;
+	std::cout << "Created Sprite: " << gluErrorString(glGetError()) << std::endl;
 
-			Sprite *test = testRenderer->addSprite(-0.25, 0, 0);
-			sprite = testRenderer->addSprite(0, 0, 1);
-			test->setSize(71, 95);
-			test->setPosition(-0.2, 0);
-			std::cout << "Created Sprite: " << gluErrorString(glGetError()) << std::endl;
+	sprite->setPosition(0, 0);
+	sprite->setSize(71, 95);
 
-			sprite->setPosition(0, 0);
-			sprite->setSize(71, 95);
+	std::cout << "Set Sprite Information: " << gluErrorString(glGetError()) << std::endl << std::endl;
 
-			std::cout << "Set Sprite Information: " << gluErrorString(glGetError()) << std::endl << std::endl;
+	window->mouseMoveListeners.push_back(cursorPos);
 
-			glfwSetCursorPosCallback(window, cursorPos);
-		}
-	}
+	auto htmlRenderer = ultralight::Renderer::Create();
+
+	std::cout << "Creating View..." << std::endl;
+
+	auto view = htmlRenderer->CreateView(200, 200, false);
+
+	LoadListenerImpl *load_listener = new LoadListenerImpl();
+	view->set_load_listener(load_listener);
+
+	view->LoadHTML(R"(
+	        <html>
+	          <head>
+	            <style type="text/css">
+	            h1 { background: yellow; }
+	            h1, p { padding: 8px; text-align: center; }
+	            </style>
+	            <title>Hello World!</title>
+	          </head>
+	          <body>
+	            <h1>Hello World!</h1>
+	            <p>Welcome to Ultralight!</p>
+	          </body>
+	        </html>
+	        )");
+
+	std::cout << "Starting update loop..." << std::endl;
+
+	while (!finished) htmlRenderer->Update();
+
+	std::cout << "Writing bitmap to output.png" << std::endl;
+
+	htmlRenderer->Render();
+
+	view->bitmap()->WritePNG("output.png");
+
+	std::cout << "Done." << std::endl;
+
+	std::cout << "\n\n";
+
+	view->set_load_listener(nullptr);
+	delete load_listener;
+
 	return true;
 }
 
@@ -130,20 +154,16 @@ bool loadAssets() {
 
 float rotation = 0;
 
-bool mainLoop() { /* Render here */
+bool mainLoop() { // Render here /
 	// std::cout << "\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A";
-
-	glfwGetFramebufferSize(window, &width, &height);
-	glViewport(0, 0, width, height);
-	std::cout << "Update frame buffer size: " << gluErrorString(glGetError()) << std::endl;
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glClearColor(0.0f, 0.5f, 1.0f, 1.0f);
 	std::cout << "Clear: " << gluErrorString(glGetError()) << std::endl;
 
-	sprite->setPosition(mouseX, -mouseY);
+	sprite->setPosition(mouseX - width / 2, -mouseY + height / 2);
 
-	sprite->setTextureID((sprite->getTextureID() + 1) % 10);
+	sprite->setTextureID((sprite->getTextureID() + 1) % 10 + 1);
 
 	camera->dimensions.x = width;
 	camera->dimensions.y = height;
@@ -154,6 +174,7 @@ bool mainLoop() { /* Render here */
 
 	SpriteRenderer::spriteShader->bind();
 
+	sprite->setRotation((int) floor(rotation));
 	glUniformMatrix4fv(SpriteRenderer::viewProjectionUniform, 1, GL_FALSE,
 	                   (float *) glm::value_ptr(camera->cameraMatrix));
 	std::cout << "Camera values: " << glm::to_string(camera->cameraMatrix) << "\nWidth: " << width
@@ -161,59 +182,20 @@ bool mainLoop() { /* Render here */
 	testRenderer->display();
 	std::cout << "Draw Sprites: " << gluErrorString(glGetError()) << std::endl;
 
-	/* Swap front and back buffers */
-	glfwSwapBuffers(window);
-
-	/* Poll for and process events */
-	glfwPollEvents();
-
 	std::this_thread::sleep_for(std::chrono::milliseconds(15));
+	window->update();
 
 	return true;
 }
 
 void close() {
 	// Destroy window
-	glfwDestroyWindow(window);
-	window = NULL;
+	delete window;
 
 	// Quit GLFW subsystems
 	glfwTerminate();
 }
-
 int main() {
-	/*
-	std::cout << "\n\n";
-
-	Ref<Renderer> renderer = Renderer::Create();
-
-	ultralight::Platform &platform = ultralight::Platform::instance();
-	platform.set_font_loader(new FontLoaderRoboto());
-	platform.set_gpu_driver(new GPUDriver(new));
-
-	std::cout << "Creating Renderer..." << std::endl;
-
-	auto renderer = ultralight::Renderer::Create();
-
-	std::cout << "Creating View..." << std::endl;
-
-	auto view = renderer->CreateView(100, 100, false);
-	view->set_load_listener(new LoadListener());
-	view->LoadHTML("<html><head><title>Hello World</title></head><body></body></html>");
-
-	std::cout << "Starting update loop..." << std::endl;
-	while (!finished) {
-	  renderer->Update();
-	  renderer->Render();
-	}
-
-	std::cout << "Loaded page with title: \n\t " << view->title().utf8().data() << std::endl;
-
-	std::cout << "Done." << std::endl;
-
-	std::cout << "\n\n";
-*/
-
 	// Start up GLFW and create window
 	if (!init()) {
 		printf("Failed to initialize!\n");
@@ -221,7 +203,7 @@ int main() {
 		if (!loadAssets()) {
 			printf("FUCK");
 		} else {
-			while (!glfwWindowShouldClose(window)) {
+			while (!window->shouldClose()) {
 				mainLoop();
 			}
 		}

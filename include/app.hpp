@@ -44,16 +44,9 @@ class App {
 public:
 	frameInfo *frame;
 	appInfo *app;
-	void (*init)(frameInfo *, appInfo *);
-	void (*update)(frameInfo *, appInfo *);
-	void (*render)(frameInfo *, appInfo *);
-	void (*cleanup)(frameInfo *, appInfo *);
-
-	App(void (*init)(frameInfo *, appInfo *), void (*update)(frameInfo *, appInfo *),
-	    void (*render)(frameInfo *, appInfo *), void (*cleanup)(frameInfo *, appInfo *));
-
-private:
-	void setup(GLFWwindow *win);
-	void callUpdate();
-	void callRender();
+	virtual void init() = 0;
+	virtual void update() = 0;
+	virtual void render() = 0;
+	virtual void cleanup() = 0;
+	void setup();
 };

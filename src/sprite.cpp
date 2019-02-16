@@ -182,12 +182,12 @@ void SpriteRenderer::removeSprite(Sprite *sprite) {
 
 const int Sprite::spriteElementArray[6] = {1, 0, 2, 3, 2, 0};
 
-Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
+Sprite::Sprite(SpriteRenderer *renderer) {
 	std::cout << "Creating sprite" << std::endl;
 
 	this->renderer = renderer;
-	this->rendererIndex = rendererIndex;
-	this->setTextureID(rendererIndex);
+	this->rendererIndex = -1;
+	this->setTexturePos(glm::vec2(0, 0), glm::vec2(1, 1));
 	std::cout << "Set texture" << std::endl;
 
 	// Set the indexes in the default element buffer to point to this sprites indexes
@@ -202,6 +202,29 @@ Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) {
 
 	this->setPosition(0, 0, -1);
 	this->setSize(1, 1);
+}
+
+Sprite::Sprite(SpriteRenderer *renderer, int rendererIndex) : Sprite::Sprite(renderer) {
+	this->setTextureID(rendererIndex);
+}
+
+void Sprite::setTexturePos(glm::vec2 pos1, glm::vec2 pos2) {
+	this->textureID = -1;
+
+	// Update tex coords to use the right format
+	this->texCoords[0] = pos1.x;
+	this->texCoords[1] = pos1.y;
+	//
+	this->texCoords[2] = pos2.x;
+	this->texCoords[3] = pos1.y;
+	//
+	this->texCoords[4] = pos1.x;
+	this->texCoords[5] = pos2.y;
+	//
+	this->texCoords[6] = pos2.x;
+	this->texCoords[7] = pos2.y;
+
+	this->updateTextureBuffer();
 }
 
 void Sprite::setTextureID(int textureID) {
@@ -222,6 +245,11 @@ void Sprite::setTextureID(int textureID) {
 	//
 	this->texCoords[6] = texCoords[0];
 	this->texCoords[7] = texCoords[3];
+
+	this->updateTextureBuffer();
+}
+
+void Sprite::updateTextureBuffer() {
 
 	if (this->mirrored) {
 		std::swap(this->texCoords[0], this->texCoords[2]);
